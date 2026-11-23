@@ -1,8 +1,195 @@
 <!doctype html>
+<html lang="de">
+<head>
 <meta charset="utf-8">
-<title>Vakutec Fragebogen</title>
-<pre id="out"></pre>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Vakutec Kundenfragebogen</title>
+<style>
+  :root { --rot: #CC0000; --text: #1d1d1d; --grau: #6b6b6b; --linie: #d8d8d8; --bg: #ffffff; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Arial, Helvetica, sans-serif; color: var(--text); background: var(--bg); font-size: 17px; line-height: 1.45; }
+  main { max-width: 560px; margin: 0 auto; padding: 20px 18px 48px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+  header img { height: 44px; width: auto; }
+  header span { color: var(--grau); font-size: 14px; text-align: right; }
+  h1 { font-size: 22px; margin: 0 0 6px; }
+  .karte { background: #fff; border: 1px solid var(--linie); border-radius: 10px; padding: 16px; margin-top: 14px; }
+  .wer { color: var(--grau); font-size: 15px; margin: 0; }
+  label.frage, p.frage { display: block; font-weight: bold; margin: 0 0 10px; }
+  .hinweis { color: var(--grau); font-size: 14px; margin: 6px 0 0; }
+  .skala { display: grid; grid-template-columns: repeat(11, 1fr); gap: 4px; }
+  .skala button { padding: 12px 0; font-size: 16px; border: 1px solid var(--linie); border-radius: 6px; background: #fff; color: var(--text); cursor: pointer; }
+  .skala button[aria-pressed="true"] { background: var(--rot); border-color: var(--rot); color: #fff; font-weight: bold; }
+  .enden { display: flex; justify-content: space-between; color: var(--grau); font-size: 13px; margin-top: 6px; }
+  textarea, input[type=tel] { width: 100%; font: inherit; padding: 10px; border: 1px solid var(--linie); border-radius: 6px; }
+  textarea { min-height: 110px; resize: vertical; }
+  .check { display: flex; gap: 10px; align-items: flex-start; }
+  .check input { width: 22px; height: 22px; margin-top: 2px; accent-color: var(--rot); }
+  #telefonzeile { margin-top: 10px; }
+  button.senden { width: 100%; margin-top: 18px; padding: 15px; font-size: 18px; font-weight: bold; color: #fff; background: var(--rot); border: 0; border-radius: 8px; cursor: pointer; }
+  button.senden:disabled { opacity: .5; cursor: default; }
+  .fehler { color: var(--rot); font-weight: bold; margin-top: 12px; }
+  .fuss { color: var(--grau); font-size: 13px; margin-top: 22px; text-align: center; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <img src="logo.jpg" alt="Vakutec Gülletechnik">
+    <span>Kundenfragebogen</span>
+  </header>
+
+  <section id="laden"><p>Fragebogen wird geladen …</p></section>
+
+  <section id="meldung" hidden>
+    <div class="karte">
+      <h1 id="meldungTitel"></h1>
+      <p id="meldungText"></p>
+    </div>
+  </section>
+
+  <form id="formular" hidden novalidate>
+    <h1>Ihre Meinung zählt</h1>
+    <p class="wer" id="wer"></p>
+
+    <div class="karte">
+      <p class="frage" id="fZufriedenheit">Wie zufrieden sind Sie mit Ihrem Vakutec-Gerät?</p>
+      <div class="skala" id="skala" role="group" aria-labelledby="fZufriedenheit"></div>
+      <div class="enden"><span>0 = gar nicht</span><span>10 = sehr zufrieden</span></div>
+    </div>
+
+    <div class="karte">
+      <label class="frage" for="kritik">Was passt nicht oder was sollten wir besser machen?</label>
+      <textarea id="kritik" maxlength="4000"></textarea>
+      <p class="hinweis">Gerade wenn etwas nicht in Ordnung ist, möchten wir es wissen.</p>
+    </div>
+
+    <div class="karte">
+      <label class="check">
+        <input type="checkbox" id="rueckruf">
+        <span>Bitte rufen Sie mich an.</span>
+      </label>
+      <div id="telefonzeile" hidden>
+        <label class="hinweis" for="telefon">Telefonnummer und beste Zeit</label>
+        <input type="tel" id="telefon" maxlength="120" autocomplete="tel">
+      </div>
+    </div>
+
+    <p class="fehler" id="fehler" hidden></p>
+    <button type="submit" class="senden" id="senden">Absenden</button>
+    <p class="fuss">Ihre Antwort geht direkt an die Vakutec Gülletechnik GmbH.</p>
+  </form>
+</main>
+
 <script>
-  document.getElementById('out').textContent =
-    'Token: ' + new URLSearchParams(location.search).get('t');
+  // Supabase-Projekt: beide Werte sind öffentlich (kein service_role-Schlüssel!)
+  const SUPABASE_URL = 'https://ukajsxyevyqsxxrhjyiu.supabase.co';
+  const ANON_KEY = 'sb_publishable_J5lV6pqEV5_xAoU6i3Th8w_JPhn8aOg';
+
+  const token = new URLSearchParams(location.search).get('t');
+  const $ = id => document.getElementById(id);
+  let einladung = null;
+  let zufriedenheit = null;
+
+  async function rpc(name, daten) {
+    const antwort = await fetch(SUPABASE_URL + '/rest/v1/rpc/' + name, {
+      method: 'POST',
+      headers: { 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + ANON_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify(daten)
+    });
+    if (!antwort.ok) throw new Error('HTTP ' + antwort.status);
+    return antwort.json();
+  }
+
+  function zeigeMeldung(titel, text) {
+    $('laden').hidden = true;
+    $('formular').hidden = true;
+    $('meldungTitel').textContent = titel;
+    $('meldungText').textContent = text;
+    $('meldung').hidden = false;
+  }
+
+  function baueSkala() {
+    for (let i = 0; i <= 10; i++) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = i;
+      b.setAttribute('aria-pressed', 'false');
+      b.addEventListener('click', () => {
+        zufriedenheit = i;
+        for (const x of $('skala').children) x.setAttribute('aria-pressed', x === b ? 'true' : 'false');
+        $('fehler').hidden = true;
+      });
+      $('skala').appendChild(b);
+    }
+  }
+
+  async function start() {
+    if (!token) {
+      zeigeMeldung('Kein Fragebogen gefunden', 'Bitte scannen Sie den QR-Code aus unserem Brief noch einmal.');
+      return;
+    }
+    try {
+      einladung = await rpc('fragebogen_laden', { p_token: token });
+    } catch (e) {
+      zeigeMeldung('Das hat leider nicht geklappt', 'Bitte versuchen Sie es später noch einmal oder rufen Sie uns an: +43 7587 7770-0.');
+      return;
+    }
+    if (!einladung) {
+      zeigeMeldung('Link nicht gültig', 'Bitte scannen Sie den QR-Code aus unserem Brief noch einmal.');
+      return;
+    }
+    if (einladung.beantwortet) {
+      zeigeMeldung('Vielen Dank!', 'Ihre Antwort ist bereits bei uns eingelangt.');
+      return;
+    }
+    const teile = [einladung.name, einladung.ort].filter(Boolean).join(', ');
+    const geraet = [einladung.maschine, einladung.seriennummer ? 'Seriennummer ' + einladung.seriennummer : ''].filter(Boolean).join(' · ');
+    $('wer').textContent = [teile, geraet].filter(Boolean).join(' – ');
+    baueSkala();
+    $('laden').hidden = true;
+    $('formular').hidden = false;
+  }
+
+  $('rueckruf').addEventListener('change', () => { $('telefonzeile').hidden = !$('rueckruf').checked; });
+
+  $('formular').addEventListener('submit', async ev => {
+    ev.preventDefault();
+    const kritik = $('kritik').value.trim();
+    if (zufriedenheit === null && !kritik && !$('rueckruf').checked) {
+      $('fehler').textContent = 'Bitte wählen Sie eine Zahl oder schreiben Sie uns kurz.';
+      $('fehler').hidden = false;
+      return;
+    }
+    $('senden').disabled = true;
+    $('fehler').hidden = true;
+    const antworten = {
+      version: 1,
+      typ: einladung.typ,
+      zufriedenheit: zufriedenheit,
+      kritik: kritik,
+      rueckruf: $('rueckruf').checked,
+      telefon: $('rueckruf').checked ? $('telefon').value.trim() : ''
+    };
+    try {
+      const ergebnis = await rpc('fragebogen_absenden', { p_token: token, p_antworten: antworten });
+      if (ergebnis === 'ok' || ergebnis === 'bereits_beantwortet') {
+        zeigeMeldung('Vielen Dank!', antworten.rueckruf
+          ? 'Ihre Antwort ist bei uns eingelangt. Wir melden uns telefonisch bei Ihnen.'
+          : 'Ihre Antwort ist bei uns eingelangt.');
+      } else {
+        throw new Error(ergebnis);
+      }
+    } catch (e) {
+      $('senden').disabled = false;
+      $('fehler').textContent = 'Senden hat nicht geklappt. Bitte versuchen Sie es noch einmal.';
+      $('fehler').hidden = false;
+    }
+  });
+
+  start();
 </script>
+</body>
+</html>
