@@ -31,6 +31,11 @@
   button.senden:disabled { opacity: .5; cursor: default; }
   .fehler { color: var(--rot); font-weight: bold; margin-top: 12px; }
   .fuss { color: var(--grau); font-size: 13px; margin-top: 22px; text-align: center; }
+  h2 { font-size: 19px; margin: 26px 0 0; }
+  .wahl { display: grid; gap: 4px; }
+  .wahl label { display: flex; gap: 10px; align-items: flex-start; padding: 7px 0; }
+  .wahl input[type=checkbox], .wahl input[type=radio] { width: 22px; height: 22px; margin-top: 1px; flex: none; accent-color: var(--rot); }
+  input[type=text] { width: 100%; font: inherit; padding: 10px; border: 1px solid var(--linie); border-radius: 6px; margin-top: 6px; }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -77,6 +82,51 @@
       </div>
     </div>
 
+    <div id="zusatz" hidden>
+      <h2>Noch ein paar kurze Fragen</h2>
+      <p class="hinweis">Freiwillig – Sie können auch gleich absenden.</p>
+
+      <div class="karte">
+        <p class="frage" id="fEmpfehlung">Wie wahrscheinlich ist es, dass Sie Vakutec einem anderen Landwirt weiterempfehlen?</p>
+        <div class="skala" id="skalaEmpfehlung" role="group" aria-labelledby="fEmpfehlung"></div>
+        <div class="enden"><span>0 = überhaupt nicht</span><span>10 = sehr wahrscheinlich</span></div>
+      </div>
+
+      <div class="karte nurF1" hidden>
+        <p class="frage">Wodurch wurden Sie auf Vakutec aufmerksam?</p>
+        <p class="hinweis" style="margin:-6px 0 6px">Mehrfachnennung möglich</p>
+        <div class="wahl" id="wahlAufmerksam"></div>
+        <input type="text" id="aufmerksamSonstiges" maxlength="200" placeholder="Sonstiges" aria-label="Sonstiges">
+      </div>
+
+      <div class="karte nurF1" hidden>
+        <p class="frage">Warum haben Sie sich für Vakutec entschieden?</p>
+        <p class="hinweis" style="margin:-6px 0 6px">Mehrfachnennung möglich</p>
+        <div class="wahl" id="wahlEntscheidung"></div>
+        <input type="text" id="entscheidungSonstiges" maxlength="200" placeholder="Sonstiges" aria-label="Sonstiges">
+      </div>
+
+      <div class="karte nurF5" hidden>
+        <p class="frage">Würden Sie sich heute wieder für Vakutec entscheiden?</p>
+        <div class="wahl" id="wahlWiederkauf">
+          <label><input type="radio" name="wiederkauf" value="ja"><span>Ja</span></label>
+          <label><input type="radio" name="wiederkauf" value="nein"><span>Nein</span></label>
+        </div>
+        <input type="text" id="wiederkaufGrund" maxlength="300" placeholder="Falls nein: warum?" aria-label="Falls nein: warum?">
+      </div>
+
+      <div class="karte nurF5" hidden>
+        <p class="frage">Planen Sie in den nächsten 1–2 Jahren eine Anschaffung?</p>
+        <p class="hinweis" style="margin:-6px 0 6px">Mehrfachnennung möglich</p>
+        <div class="wahl" id="wahlPlanung"></div>
+      </div>
+
+      <div class="karte">
+        <p class="frage">Dürfen wir Ihnen Prospekte zu folgenden Themen zusenden?</p>
+        <div class="wahl" id="wahlInfos"></div>
+      </div>
+    </div>
+
     <p class="fehler" id="fehler" hidden></p>
     <button type="submit" class="senden" id="senden">Absenden</button>
     <p class="fuss">Ihre Antwort geht direkt an die Vakutec Gülletechnik GmbH.</p>
@@ -91,7 +141,6 @@
   const token = new URLSearchParams(location.search).get('t');
   const $ = id => document.getElementById(id);
   let einladung = null;
-  let zufriedenheit = null;
 
   async function rpc(name, daten) {
     const antwort = await fetch(SUPABASE_URL + '/rest/v1/rpc/' + name, {
@@ -111,19 +160,46 @@
     $('meldung').hidden = false;
   }
 
-  function baueSkala() {
+  const werte = { zufriedenheit: null, weiterempfehlung: null };
+
+  const AUFMERKSAM = ['Inserate in Fachzeitschriften', 'Messen – Ausstellungen', 'Empfehlung eines anderen Kunden',
+    'Gülletag / Vorführung', 'Händlerkontakt', 'Internet / Social Media', 'Bereits Vakutec-Kunde'];
+  const ENTSCHEIDUNG = ['Beratung durch Vakutec-Mitarbeiter', 'Beratung durch Vertriebspartner/Händler',
+    'Verfügbarkeit (Lagermaschine)', 'Preis/Leistungsverhältnis', 'Empfehlung eines anderen Kunden', 'Qualität / Technik'];
+  const PLANUNG = ['Neues Güllefass', 'Nachrüstung bodennahe Verteiltechnik', 'Rühr- oder Pumptechnik', 'Nein, derzeit nichts geplant'];
+  const INFOS = ['Fässer bis 4000 Liter', 'Vakuum | Pumpfässer 4600 bis 18300 Liter', 'Pumpfässer light bis 18500 Liter',
+    'Rührtechnik', 'Pumptechnik | Güllepumpen', 'Bodennahe Verteiltechnik'];
+
+  function baueSkala(id, feld) {
     for (let i = 0; i <= 10; i++) {
       const b = document.createElement('button');
       b.type = 'button';
       b.textContent = i;
       b.setAttribute('aria-pressed', 'false');
       b.addEventListener('click', () => {
-        zufriedenheit = i;
-        for (const x of $('skala').children) x.setAttribute('aria-pressed', x === b ? 'true' : 'false');
+        werte[feld] = i;
+        for (const x of $(id).children) x.setAttribute('aria-pressed', x === b ? 'true' : 'false');
         $('fehler').hidden = true;
       });
-      $('skala').appendChild(b);
+      $(id).appendChild(b);
     }
+  }
+
+  function baueWahl(id, optionen) {
+    for (const text of optionen) {
+      const l = document.createElement('label');
+      const c = document.createElement('input');
+      c.type = 'checkbox';
+      c.value = text;
+      const t = document.createElement('span');
+      t.textContent = text;
+      l.append(c, t);
+      $(id).appendChild(l);
+    }
+  }
+
+  function gewaehlt(id) {
+    return Array.from($(id).querySelectorAll('input:checked'), c => c.value);
   }
 
   async function start() {
@@ -148,7 +224,14 @@
     const teile = [einladung.name, einladung.ort].filter(Boolean).join(', ');
     const geraet = [einladung.maschine, einladung.seriennummer ? 'Seriennummer ' + einladung.seriennummer : ''].filter(Boolean).join(' · ');
     $('wer').textContent = [teile, geraet].filter(Boolean).join(' – ');
-    baueSkala();
+    baueSkala('skala', 'zufriedenheit');
+    baueSkala('skalaEmpfehlung', 'weiterempfehlung');
+    baueWahl('wahlAufmerksam', AUFMERKSAM);
+    baueWahl('wahlEntscheidung', ENTSCHEIDUNG);
+    baueWahl('wahlPlanung', PLANUNG);
+    baueWahl('wahlInfos', INFOS);
+    for (const k of document.querySelectorAll(einladung.typ === 'F5' ? '.nurF5' : '.nurF1')) k.hidden = false;
+    $('zusatz').hidden = false;
     $('laden').hidden = true;
     $('formular').hidden = false;
   }
@@ -158,21 +241,37 @@
   $('formular').addEventListener('submit', async ev => {
     ev.preventDefault();
     const kritik = $('kritik').value.trim();
-    if (zufriedenheit === null && !kritik && !$('rueckruf').checked) {
+    const f5 = einladung.typ === 'F5';
+    const wk = document.querySelector('input[name=wiederkauf]:checked');
+    const antworten = {
+      version: 3,
+      typ: einladung.typ,
+      zufriedenheit: werte.zufriedenheit,
+      kritik: kritik,
+      rueckruf: $('rueckruf').checked,
+      telefon: $('rueckruf').checked ? $('telefon').value.trim() : '',
+      weiterempfehlung: werte.weiterempfehlung,
+      infos: gewaehlt('wahlInfos')
+    };
+    if (f5) {
+      antworten.wiederkauf = wk ? wk.value : null;
+      antworten.wiederkauf_grund = $('wiederkaufGrund').value.trim();
+      antworten.planung = gewaehlt('wahlPlanung');
+    } else {
+      antworten.aufmerksam = gewaehlt('wahlAufmerksam');
+      antworten.aufmerksam_sonstiges = $('aufmerksamSonstiges').value.trim();
+      antworten.entscheidung = gewaehlt('wahlEntscheidung');
+      antworten.entscheidung_sonstiges = $('entscheidungSonstiges').value.trim();
+    }
+    const leer = Object.entries(antworten).every(([k, v]) =>
+      k === 'version' || k === 'typ' || v === null || v === '' || v === false || (Array.isArray(v) && v.length === 0));
+    if (leer) {
       $('fehler').textContent = 'Bitte wählen Sie eine Zahl oder schreiben Sie uns kurz.';
       $('fehler').hidden = false;
       return;
     }
     $('senden').disabled = true;
     $('fehler').hidden = true;
-    const antworten = {
-      version: 1,
-      typ: einladung.typ,
-      zufriedenheit: zufriedenheit,
-      kritik: kritik,
-      rueckruf: $('rueckruf').checked,
-      telefon: $('rueckruf').checked ? $('telefon').value.trim() : ''
-    };
     try {
       const ergebnis = await rpc('fragebogen_absenden', { p_token: token, p_antworten: antworten });
       if (ergebnis === 'ok' || ergebnis === 'bereits_beantwortet') {
