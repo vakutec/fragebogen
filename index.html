@@ -18,7 +18,11 @@
   .wer { position: sticky; top: 0; z-index: 5; margin: 10px -18px 0; padding: 10px 18px;
          background: #fff; border-bottom: 3px solid var(--rot); box-shadow: 0 2px 6px rgba(0,0,0,.08); }
   .wer strong { display: block; font-size: 18px; }
-  .wer span { display: block; font-size: 15px; color: #444; }
+  .wer span { display: block; font-size: 14px; line-height: 1.35; color: #444; overflow-wrap: anywhere; }
+  .wer span:empty { display: none; }
+  .wer #werGeraet { font-weight: bold; color: var(--text); }
+  details.karte > summary { font-weight: bold; color: var(--rot); cursor: pointer; }
+  details.karte[open] > summary { margin-bottom: 10px; }
   label.frage, p.frage { display: block; font-weight: bold; margin: 0 0 10px; }
   .hinweis { color: var(--grau); font-size: 14px; margin: 6px 0 0; }
   .skala { display: grid; grid-template-columns: repeat(11, 1fr); gap: 4px; }
@@ -66,12 +70,12 @@
 
   <form id="formular" hidden novalidate>
     <h1>Ihre Meinung zählt</h1>
-    <div class="wer"><strong id="werName"></strong><span id="werGeraet"></span></div>
+    <div class="wer"><strong id="werName"></strong><span id="werAdresse"></span><span id="werKontakt"></span><span id="werGeraet"></span></div>
     <p class="hinweis">Alle Fragen sind freiwillig. Sie können jederzeit absenden.</p>
 
-    <div class="karte">
-      <p class="frage">Ihre Kontaktdaten</p>
-      <p class="hinweis" style="margin:-6px 0 10px">Bitte korrigieren oder ergänzen Sie, was nicht stimmt.</p>
+    <details class="karte" id="kontaktBox">
+      <summary>Kontaktdaten korrigieren</summary>
+      <p class="hinweis" style="margin:0 0 10px">Bitte korrigieren oder ergänzen Sie, was nicht stimmt.</p>
       <div class="kontakt" id="kontakt">
         <label>Name<input type="text" id="kName" maxlength="80" autocomplete="name"></label>
         <label>Straße<input type="text" id="kStrasse" maxlength="80" autocomplete="street-address"></label>
@@ -81,7 +85,7 @@
         <label>Telefon<input type="tel" id="kTelefon" maxlength="40" autocomplete="tel"></label>
         <label>Mobil<input type="tel" id="kMobil" maxlength="40"></label>
       </div>
-    </div>
+    </details>
 
     <div class="karte nurF1" hidden>
       <p class="frage">Wodurch wurden Sie auf Vakutec aufmerksam?</p>
@@ -221,13 +225,28 @@
   const KONTAKT = { kName: 'name', kStrasse: 'strasse', kPlz: 'plz', kOrt: 'ortsname',
                     kEmail: 'email', kTelefon: 'telefon', kMobil: 'mobil' };
 
+  function zeigeKopf() {
+    const v = id => $(id).value.trim();
+    const plzOrt = [v('kPlz'), v('kOrt')].filter(Boolean).join(' ') || (einladung.ort || '');
+    $('werName').textContent = v('kName');
+    $('werAdresse').textContent = [v('kStrasse'), plzOrt].filter(Boolean).join(', ');
+    $('werKontakt').textContent = [v('kEmail'), v('kTelefon') && 'Tel. ' + v('kTelefon'), v('kMobil') && 'Mobil ' + v('kMobil')]
+      .filter(Boolean).join(' · ');
+    $('werGeraet').textContent = [einladung.maschine, einladung.seriennummer ? 'Seriennummer ' + einladung.seriennummer : '']
+      .filter(Boolean).join(' · ');
+  }
+
   function fuelleKontakt() {
     for (const [id, feld] of Object.entries(KONTAKT)) {
       const el = $(id);
       el.value = einladung[feld] || '';
       el.dataset.alt = el.value;
-      el.addEventListener('input', () => el.classList.toggle('geaendert', el.value.trim() !== el.dataset.alt));
+      el.addEventListener('input', () => {
+        el.classList.toggle('geaendert', el.value.trim() !== el.dataset.alt);
+        zeigeKopf();
+      });
     }
+    zeigeKopf();
   }
 
   function leseKontakt() {
@@ -262,10 +281,6 @@
       zeigeMeldung('Vielen Dank!', 'Ihre Antwort ist bereits bei uns eingelangt.');
       return;
     }
-    const teile = [einladung.name, einladung.ort].filter(Boolean).join(', ');
-    const geraet = [einladung.maschine, einladung.seriennummer ? 'Seriennummer ' + einladung.seriennummer : ''].filter(Boolean).join(' · ');
-    $('werName').textContent = teile;
-    $('werGeraet').textContent = geraet;
     fuelleKontakt();
     baueSkala('skala', 'zufriedenheit');
     baueSkala('skalaEmpfehlung', 'weiterempfehlung');
