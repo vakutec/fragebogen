@@ -58,6 +58,41 @@
   <form id="formular" hidden novalidate>
     <h1>Ihre Meinung zählt</h1>
     <p class="wer" id="wer"></p>
+    <p class="hinweis">Alle Fragen sind freiwillig. Sie können jederzeit absenden.</p>
+
+    <div class="karte nurF1" hidden>
+      <p class="frage">Wodurch wurden Sie auf Vakutec aufmerksam?</p>
+      <p class="hinweis" style="margin:-6px 0 6px">Mehrfachnennung möglich</p>
+      <div class="wahl" id="wahlAufmerksam"></div>
+      <input type="text" id="aufmerksamSonstiges" maxlength="200" placeholder="Sonstiges" aria-label="Sonstiges">
+    </div>
+
+    <div class="karte nurF1" hidden>
+      <p class="frage">Warum haben Sie sich für Vakutec entschieden?</p>
+      <p class="hinweis" style="margin:-6px 0 6px">Mehrfachnennung möglich</p>
+      <div class="wahl" id="wahlEntscheidung"></div>
+      <input type="text" id="entscheidungSonstiges" maxlength="200" placeholder="Sonstiges" aria-label="Sonstiges">
+    </div>
+
+    <div class="karte nurF5" hidden>
+      <p class="frage">Würden Sie sich heute wieder für Vakutec entscheiden?</p>
+      <div class="wahl" id="wahlWiederkauf">
+        <label><input type="radio" name="wiederkauf" value="ja"><span>Ja</span></label>
+        <label><input type="radio" name="wiederkauf" value="nein"><span>Nein</span></label>
+      </div>
+      <input type="text" id="wiederkaufGrund" maxlength="300" placeholder="Falls nein: warum?" aria-label="Falls nein: warum?">
+    </div>
+
+    <div class="karte nurF5" hidden>
+      <p class="frage">Planen Sie in den nächsten 1–2 Jahren eine Anschaffung?</p>
+      <p class="hinweis" style="margin:-6px 0 6px">Mehrfachnennung möglich</p>
+      <div class="wahl" id="wahlPlanung"></div>
+    </div>
+
+    <div class="karte">
+      <p class="frage">Dürfen wir Ihnen Prospekte zu folgenden Themen zusenden?</p>
+      <div class="wahl" id="wahlInfos"></div>
+    </div>
 
     <div class="karte">
       <p class="frage" id="fZufriedenheit">Wie zufrieden sind Sie mit Ihrem Vakutec-Gerät?</p>
@@ -72,6 +107,12 @@
     </div>
 
     <div class="karte">
+      <p class="frage" id="fEmpfehlung">Wie wahrscheinlich ist es, dass Sie Vakutec einem anderen Landwirt weiterempfehlen?</p>
+      <div class="skala" id="skalaEmpfehlung" role="group" aria-labelledby="fEmpfehlung"></div>
+      <div class="enden"><span>0 = überhaupt nicht</span><span>10 = sehr wahrscheinlich</span></div>
+    </div>
+
+    <div class="karte">
       <label class="check">
         <input type="checkbox" id="rueckruf">
         <span>Bitte rufen Sie mich an.</span>
@@ -79,51 +120,6 @@
       <div id="telefonzeile" hidden>
         <label class="hinweis" for="telefon">Telefonnummer und beste Zeit</label>
         <input type="tel" id="telefon" maxlength="120" autocomplete="tel">
-      </div>
-    </div>
-
-    <div id="zusatz" hidden>
-      <h2>Noch ein paar kurze Fragen</h2>
-      <p class="hinweis">Freiwillig – Sie können auch gleich absenden.</p>
-
-      <div class="karte">
-        <p class="frage" id="fEmpfehlung">Wie wahrscheinlich ist es, dass Sie Vakutec einem anderen Landwirt weiterempfehlen?</p>
-        <div class="skala" id="skalaEmpfehlung" role="group" aria-labelledby="fEmpfehlung"></div>
-        <div class="enden"><span>0 = überhaupt nicht</span><span>10 = sehr wahrscheinlich</span></div>
-      </div>
-
-      <div class="karte nurF1" hidden>
-        <p class="frage">Wodurch wurden Sie auf Vakutec aufmerksam?</p>
-        <p class="hinweis" style="margin:-6px 0 6px">Mehrfachnennung möglich</p>
-        <div class="wahl" id="wahlAufmerksam"></div>
-        <input type="text" id="aufmerksamSonstiges" maxlength="200" placeholder="Sonstiges" aria-label="Sonstiges">
-      </div>
-
-      <div class="karte nurF1" hidden>
-        <p class="frage">Warum haben Sie sich für Vakutec entschieden?</p>
-        <p class="hinweis" style="margin:-6px 0 6px">Mehrfachnennung möglich</p>
-        <div class="wahl" id="wahlEntscheidung"></div>
-        <input type="text" id="entscheidungSonstiges" maxlength="200" placeholder="Sonstiges" aria-label="Sonstiges">
-      </div>
-
-      <div class="karte nurF5" hidden>
-        <p class="frage">Würden Sie sich heute wieder für Vakutec entscheiden?</p>
-        <div class="wahl" id="wahlWiederkauf">
-          <label><input type="radio" name="wiederkauf" value="ja"><span>Ja</span></label>
-          <label><input type="radio" name="wiederkauf" value="nein"><span>Nein</span></label>
-        </div>
-        <input type="text" id="wiederkaufGrund" maxlength="300" placeholder="Falls nein: warum?" aria-label="Falls nein: warum?">
-      </div>
-
-      <div class="karte nurF5" hidden>
-        <p class="frage">Planen Sie in den nächsten 1–2 Jahren eine Anschaffung?</p>
-        <p class="hinweis" style="margin:-6px 0 6px">Mehrfachnennung möglich</p>
-        <div class="wahl" id="wahlPlanung"></div>
-      </div>
-
-      <div class="karte">
-        <p class="frage">Dürfen wir Ihnen Prospekte zu folgenden Themen zusenden?</p>
-        <div class="wahl" id="wahlInfos"></div>
       </div>
     </div>
 
@@ -167,8 +163,8 @@
   const ENTSCHEIDUNG = ['Beratung durch Vakutec-Mitarbeiter', 'Beratung durch Vertriebspartner/Händler',
     'Verfügbarkeit (Lagermaschine)', 'Preis/Leistungsverhältnis', 'Empfehlung eines anderen Kunden', 'Qualität / Technik'];
   const PLANUNG = ['Neues Güllefass', 'Nachrüstung bodennahe Verteiltechnik', 'Rühr- oder Pumptechnik', 'Nein, derzeit nichts geplant'];
-  const INFOS = ['Fässer bis 4000 Liter', 'Vakuum | Pumpfässer 4600 bis 18300 Liter', 'Pumpfässer light bis 18500 Liter',
-    'Rührtechnik', 'Pumptechnik | Güllepumpen', 'Bodennahe Verteiltechnik'];
+  const INFOS = ['Vakuum | Pumpfässer 1.700 bis 17.000 Liter', 'Pumpfässer light bis 18.500 Liter',
+    'Rührtechnik', 'Pumptechnik | Güllepumpen'];
 
   function baueSkala(id, feld) {
     for (let i = 0; i <= 10; i++) {
@@ -231,7 +227,6 @@
     baueWahl('wahlPlanung', PLANUNG);
     baueWahl('wahlInfos', INFOS);
     for (const k of document.querySelectorAll(einladung.typ === 'F5' ? '.nurF5' : '.nurF1')) k.hidden = false;
-    $('zusatz').hidden = false;
     $('laden').hidden = true;
     $('formular').hidden = false;
   }
@@ -266,7 +261,7 @@
     const leer = Object.entries(antworten).every(([k, v]) =>
       k === 'version' || k === 'typ' || v === null || v === '' || v === false || (Array.isArray(v) && v.length === 0));
     if (leer) {
-      $('fehler').textContent = 'Bitte wählen Sie eine Zahl oder schreiben Sie uns kurz.';
+      $('fehler').textContent = 'Bitte beantworten Sie mindestens eine Frage.';
       $('fehler').hidden = false;
       return;
     }
