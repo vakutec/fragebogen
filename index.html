@@ -39,6 +39,12 @@
   .wahl label { display: flex; gap: 10px; align-items: flex-start; padding: 7px 0; }
   .wahl input[type=checkbox], .wahl input[type=radio] { width: 22px; height: 22px; margin-top: 1px; flex: none; accent-color: var(--rot); }
   input[type=text] { width: 100%; font: inherit; padding: 10px; border: 1px solid var(--linie); border-radius: 6px; margin-top: 6px; }
+  .kontakt { display: grid; grid-template-columns: 1fr 2fr; gap: 8px 10px; }
+  .kontakt label { grid-column: 1 / -1; font-size: 14px; color: #444; }
+  .kontakt label.halb { grid-column: auto; }
+  .kontakt input { margin-top: 3px; }
+  input[type=email] { width: 100%; font: inherit; padding: 10px; border: 1px solid var(--linie); border-radius: 6px; margin-top: 6px; }
+  .kontakt input.geaendert { border-color: var(--rot); background: #fff7f7; }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -62,6 +68,20 @@
     <h1>Ihre Meinung zählt</h1>
     <div class="wer"><strong id="werName"></strong><span id="werGeraet"></span></div>
     <p class="hinweis">Alle Fragen sind freiwillig. Sie können jederzeit absenden.</p>
+
+    <div class="karte">
+      <p class="frage">Ihre Kontaktdaten</p>
+      <p class="hinweis" style="margin:-6px 0 10px">Bitte korrigieren oder ergänzen Sie, was nicht stimmt.</p>
+      <div class="kontakt" id="kontakt">
+        <label>Name<input type="text" id="kName" maxlength="80" autocomplete="name"></label>
+        <label>Straße<input type="text" id="kStrasse" maxlength="80" autocomplete="street-address"></label>
+        <label class="halb">PLZ<input type="text" id="kPlz" maxlength="10" inputmode="numeric" autocomplete="postal-code"></label>
+        <label class="halb">Ort<input type="text" id="kOrt" maxlength="60" autocomplete="address-level2"></label>
+        <label>E-Mail<input type="email" id="kEmail" maxlength="120" autocomplete="email"></label>
+        <label>Telefon<input type="tel" id="kTelefon" maxlength="40" autocomplete="tel"></label>
+        <label>Mobil<input type="tel" id="kMobil" maxlength="40"></label>
+      </div>
+    </div>
 
     <div class="karte nurF1" hidden>
       <p class="frage">Wodurch wurden Sie auf Vakutec aufmerksam?</p>
@@ -197,6 +217,28 @@
     }
   }
 
+  // Kontaktdaten: Feld-ID im Formular -> Name in den Antworten / in der Einladung
+  const KONTAKT = { kName: 'name', kStrasse: 'strasse', kPlz: 'plz', kOrt: 'ortsname',
+                    kEmail: 'email', kTelefon: 'telefon', kMobil: 'mobil' };
+
+  function fuelleKontakt() {
+    for (const [id, feld] of Object.entries(KONTAKT)) {
+      const el = $(id);
+      el.value = einladung[feld] || '';
+      el.dataset.alt = el.value;
+      el.addEventListener('input', () => el.classList.toggle('geaendert', el.value.trim() !== el.dataset.alt));
+    }
+  }
+
+  function leseKontakt() {
+    const kontakt = {}, geaendert = [];
+    for (const [id, feld] of Object.entries(KONTAKT)) {
+      kontakt[feld] = $(id).value.trim();
+      if (kontakt[feld] !== $(id).dataset.alt) geaendert.push(feld);
+    }
+    return { kontakt, geaendert };
+  }
+
   function gewaehlt(id) {
     return Array.from($(id).querySelectorAll('input:checked'), c => c.value);
   }
@@ -224,6 +266,7 @@
     const geraet = [einladung.maschine, einladung.seriennummer ? 'Seriennummer ' + einladung.seriennummer : ''].filter(Boolean).join(' · ');
     $('werName').textContent = teile;
     $('werGeraet').textContent = geraet;
+    fuelleKontakt();
     baueSkala('skala', 'zufriedenheit');
     baueSkala('skalaEmpfehlung', 'weiterempfehlung');
     baueWahl('wahlAufmerksam', AUFMERKSAM);
@@ -243,14 +286,15 @@
     const f5 = einladung.typ === 'F5';
     const wk = document.querySelector('input[name=wiederkauf]:checked');
     const antworten = {
-      version: 3,
+      version: 4,
       typ: einladung.typ,
       zufriedenheit: werte.zufriedenheit,
       kritik: kritik,
       rueckruf: $('rueckruf').checked,
       telefon: $('rueckruf').checked ? $('telefon').value.trim() : '',
       weiterempfehlung: werte.weiterempfehlung,
-      infos: gewaehlt('wahlInfos')
+      infos: gewaehlt('wahlInfos'),
+      kontakt_geaendert: leseKontakt().geaendert
     };
     if (f5) {
       antworten.wiederkauf = wk ? wk.value : null;
@@ -264,6 +308,7 @@
     }
     const leer = Object.entries(antworten).every(([k, v]) =>
       k === 'version' || k === 'typ' || v === null || v === '' || v === false || (Array.isArray(v) && v.length === 0));
+    antworten.kontakt = leseKontakt().kontakt;
     if (leer) {
       $('fehler').textContent = 'Bitte beantworten Sie mindestens eine Frage.';
       $('fehler').hidden = false;
